@@ -222,10 +222,10 @@ export default function ProductosPage() {
             </Button>
           </DialogTrigger>
 
-                    <DialogContent className="max-h-[90dvh] w-[calc(100vw-1rem)] overflow-y-auto rounded-2xl p-4 sm:max-w-2xl sm:p-6">
-            <DialogHeader className="sticky top-0 z-10 bg-white pb-3">
-              <DialogTitle>Nuevo Material</DialogTitle>
-            </DialogHeader>
+              <DialogContent className="!top-3 !translate-y-0 max-h-[calc(100dvh-1.5rem)] w-[calc(100vw-1rem)] overflow-y-auto rounded-2xl p-4 sm:!top-1/2 sm:!-translate-y-1/2 sm:max-w-2xl sm:p-6">           
+<DialogHeader className="sticky top-0 z-20 border-b bg-white pb-3">
+  <DialogTitle>Nuevo Material</DialogTitle>
+</DialogHeader>
 
             <p className="text-sm text-muted-foreground">
               El stock inicial será 0. Luego se puede actualizar desde entradas o
