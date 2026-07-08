@@ -1,0 +1,257 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Rol {
+  ADMIN
+  VENDEDOR
+  OPERADOR
+  CONSULTA
+}
+
+enum EstadoGeneral {
+  ACTIVO
+  INACTIVO
+}
+
+enum EstadoSolicitudUsuario {
+  PENDIENTE
+  APROBADA
+  RECHAZADA
+}
+
+enum Temporada {
+  PRIMAVERA
+  VERANO
+  OTONO
+  INVIERNO
+  TODO_EL_ANNO
+}
+
+enum EstadoSesion {
+  ABIERTA
+  CERRADA
+}
+
+enum EstadoVenta {
+  COMPLETADA
+  ANULADA
+}
+
+enum TipoMovimiento {
+  ENTRADA
+  SALIDA
+  AJUSTE
+}
+
+enum OrigenMovimiento {
+  STOCK_INICIAL
+  COMPRA
+  VENTA
+  AJUSTE_MANUAL
+  DEVOLUCION
+  DEVOLUCION_MATERIAL
+  ENTREGA_MATERIAL
+  RECEPCION_MATERIAL
+}
+
+enum MetodoPago {
+  EFECTIVO
+  TARJETA
+  QR
+}
+
+model tipoUsuario {
+  id      Int       @id @default(autoincrement())
+  rol     Rol       @unique
+  Usuario Usuario[]
+}
+
+model Usuario {
+  id            Int           @id @default(autoincrement())
+  idTipoUsuario Int
+  tipoUsuario   tipoUsuario   @relation(fields: [idTipoUsuario], references: [id])
+  usuario       String        @unique
+  password      String
+  estado        EstadoGeneral @default(ACTIVO)
+
+  sesiones      sesionCaja[]
+  ventas        Venta[]
+  compras       Compra[]
+  movimientos   movimientoInventario[]
+  solicitudesRevisadas solicitudUsuario[] @relation("UsuarioRevisionSolicitudes")
+}
+
+model categoriaProducto {
+  id              Int           @id @default(autoincrement())
+  nombreCategoria String
+  descripcion     String?
+  estado          EstadoGeneral @default(ACTIVO)
+  productos       Producto[]
+}
+
+model Producto {
+  id                  Int               @id @default(autoincrement())
+  idCategoriaProducto Int
+  categoria           categoriaProducto @relation(fields: [idCategoriaProducto], references: [id])
+
+  nombreProducto      String
+  codigo              String?           @unique
+  unidadMedida        String            @default("Unidad")
+  ubicacion           String?
+  fechaVencimiento    DateTime?
+  observacion         String?
+  fotoUrl             String?
+  observacionFoto     String?
+
+  precioVenta         Decimal           @default(0) @db.Decimal(10, 2)
+  marca               String?
+  talla               String            @default("N/A")
+  color               String            @default("N/A")
+  temporada           Temporada         @default(TODO_EL_ANNO)
+  costo               Decimal           @default(0) @db.Decimal(10, 2)
+  margen              Decimal           @default(0) @db.Decimal(5, 2)
+
+  stock               Int               @default(0)
+  stockMinimo         Int               @default(5)
+  estado              EstadoGeneral     @default(ACTIVO)
+
+  detallesVenta       detalleVenta[]
+  detallesCompra      detalleCompra[]
+  movimientos         movimientoInventario[]
+}
+
+model Proveedor {
+  id            Int           @id @default(autoincrement())
+  nombreEmpresa String
+  representante String?
+  telefono      String        @default("N/A")
+  correo        String?
+  ubicacion     String?
+  estado        EstadoGeneral @default(ACTIVO)
+  compras       Compra[]
+}
+
+model Cliente {
+  id        Int           @id @default(autoincrement())
+  nombre    String
+  apPaterno String        @default("N/A")
+  apMaterno String?
+  telefono  String        @default("N/A")
+  correo    String?
+  estado    EstadoGeneral @default(ACTIVO)
+
+  ventas    Venta[]
+}
+
+model tipoPago {
+  id         Int        @id @default(autoincrement())
+  tipoMetodo MetodoPago @unique
+  moneda     String     @default("BOB")
+  ventas     Venta[]
+}
+
+model sesionCaja {
+  id           Int          @id @default(autoincrement())
+  idUsuario    Int
+  usuario      Usuario      @relation(fields: [idUsuario], references: [id])
+  horaApertura DateTime     @default(now())
+  horaCierre   DateTime?
+  montoInicial Decimal      @default(0) @db.Decimal(10, 2)
+  montoFinal   Decimal?     @db.Decimal(10, 2)
+  estado       EstadoSesion @default(ABIERTA)
+  ventas       Venta[]
+}
+
+model Venta {
+  id              Int         @id @default(autoincrement())
+  idCliente       Int
+  cliente         Cliente     @relation(fields: [idCliente], references: [id])
+  idUsuario       Int
+  usuario         Usuario     @relation(fields: [idUsuario], references: [id])
+  idSesionCaja    Int
+  sesionCaja      sesionCaja  @relation(fields: [idSesionCaja], references: [id])
+  idTipoPago      Int
+  tipoPago        tipoPago    @relation(fields: [idTipoPago], references: [id])
+  fecha           DateTime    @default(now())
+  estado          EstadoVenta @default(COMPLETADA)
+  subtotal        Decimal     @default(0) @db.Decimal(10, 2)
+  total           Decimal     @default(0) @db.Decimal(10, 2)
+  motivoAnulacion String?
+  detalles        detalleVenta[]
+}
+
+model detalleVenta {
+  id         Int      @id @default(autoincrement())
+  idVenta    Int
+  venta      Venta    @relation(fields: [idVenta], references: [id])
+  idProducto Int
+  producto   Producto @relation(fields: [idProducto], references: [id])
+  cantidad   Int
+  precio     Decimal  @default(0) @db.Decimal(10, 2)
+  subtotal   Decimal  @default(0) @db.Decimal(10, 2)
+}
+
+model Compra {
+  id              Int           @id @default(autoincrement())
+  idUsuario       Int
+  usuario         Usuario       @relation(fields: [idUsuario], references: [id])
+  idProveedor     Int
+  proveedor       Proveedor     @relation(fields: [idProveedor], references: [id])
+  fecha           DateTime      @default(now())
+  numeroDocumento String?
+  tipoDocumento   String?
+  subtotal        Decimal       @default(0) @db.Decimal(10, 2)
+  descuento       Decimal       @default(0) @db.Decimal(10, 2)
+  total           Decimal       @default(0) @db.Decimal(10, 2)
+  estado          EstadoGeneral @default(ACTIVO)
+  detalles        detalleCompra[]
+  movimientos     movimientoInventario[]
+}
+
+model detalleCompra {
+  id           Int      @id @default(autoincrement())
+  idCompra     Int
+  compra       Compra   @relation(fields: [idCompra], references: [id])
+  idProducto   Int
+  producto     Producto @relation(fields: [idProducto], references: [id])
+  cantidad     Int
+  precioCompra Decimal  @default(0) @db.Decimal(10, 2)
+  subtotal     Decimal  @default(0) @db.Decimal(10, 2)
+}
+
+model movimientoInventario {
+  id          Int              @id @default(autoincrement())
+  idProducto  Int
+  producto    Producto         @relation(fields: [idProducto], references: [id])
+  idUsuario   Int
+  usuario     Usuario          @relation(fields: [idUsuario], references: [id])
+  idCompra    Int?
+  compra      Compra?          @relation(fields: [idCompra], references: [id])
+  fecha       DateTime         @default(now())
+  tipo        TipoMovimiento
+  origen      OrigenMovimiento @default(AJUSTE_MANUAL)
+  cantidad    Int
+  descripcion String
+  fotoUrl     String?
+  observacionFoto String?
+}
+model solicitudUsuario {
+  id             Int                    @id @default(autoincrement())
+  nombre         String
+  usuario        String                 @unique
+  correo         String?
+  passwordHash   String
+  rolAsignado    Rol?
+  estado         EstadoSolicitudUsuario @default(PENDIENTE)
+  motivoRechazo  String?
+  fechaSolicitud DateTime               @default(now())
+  fechaRevision  DateTime?
+  revisadoPorId  Int?
+  revisadoPor    Usuario?               @relation("UsuarioRevisionSolicitudes", fields: [revisadoPorId], references: [id])
+}
