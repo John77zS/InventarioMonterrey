@@ -43,6 +43,33 @@ enum EstadoVenta {
   ANULADA
 }
 
+enum EstadoEvento {
+  PROXIMO
+  EN_CURSO
+  FINALIZADO
+  CANCELADO
+}
+
+enum TipoUsoEvento {
+  CONSUMIBLE
+  RETORNABLE
+}
+
+enum TipoControlGasto {
+  SERVICIO
+  CONSUMIBLE
+  RETORNABLE
+}
+
+enum EstadoGastoEvento {
+  REGISTRADO
+  APROBADO
+  COMPRADO
+  RECIBIDO
+  PAGADO
+  CANCELADO
+}
+
 enum TipoMovimiento {
   ENTRADA
   SALIDA
@@ -58,6 +85,8 @@ enum OrigenMovimiento {
   DEVOLUCION_MATERIAL
   ENTREGA_MATERIAL
   RECEPCION_MATERIAL
+  ASIGNACION_EVENTO
+  DEVOLUCION_EVENTO
 }
 
 enum MetodoPago {
@@ -80,11 +109,13 @@ model Usuario {
   password      String
   estado        EstadoGeneral @default(ACTIVO)
 
-  sesiones      sesionCaja[]
-  ventas        Venta[]
-  compras       Compra[]
-  movimientos   movimientoInventario[]
-  solicitudesRevisadas solicitudUsuario[] @relation("UsuarioRevisionSolicitudes")
+  sesiones             sesionCaja[]
+  ventas               Venta[]
+  compras              Compra[]
+  movimientos          movimientoInventario[]
+  solicitudesRevisadas solicitudUsuario[]     @relation("UsuarioRevisionSolicitudes")
+  eventosCreados       Evento[]               @relation("EventoCreadoPor")
+  eventosResponsable   Evento[]               @relation("EventoResponsable")
 }
 
 model categoriaProducto {
@@ -100,30 +131,32 @@ model Producto {
   idCategoriaProducto Int
   categoria           categoriaProducto @relation(fields: [idCategoriaProducto], references: [id])
 
-  nombreProducto      String
-  codigo              String?           @unique
-  unidadMedida        String            @default("Unidad")
-  ubicacion           String?
-  fechaVencimiento    DateTime?
-  observacion         String?
-  fotoUrl             String?
-  observacionFoto     String?
+  nombreProducto   String
+  codigo           String?   @unique
+  unidadMedida     String    @default("Unidad")
+  ubicacion        String?
+  fechaVencimiento DateTime?
+  observacion      String?
+  fotoUrl          String?
+  observacionFoto  String?
 
-  precioVenta         Decimal           @default(0) @db.Decimal(10, 2)
-  marca               String?
-  talla               String            @default("N/A")
-  color               String            @default("N/A")
-  temporada           Temporada         @default(TODO_EL_ANNO)
-  costo               Decimal           @default(0) @db.Decimal(10, 2)
-  margen              Decimal           @default(0) @db.Decimal(5, 2)
+  precioVenta Decimal   @default(0) @db.Decimal(10, 2)
+  marca       String?
+  talla       String    @default("N/A")
+  color       String    @default("N/A")
+  temporada   Temporada @default(TODO_EL_ANNO)
+  costo       Decimal   @default(0) @db.Decimal(10, 2)
+  margen      Decimal   @default(0) @db.Decimal(5, 2)
 
-  stock               Int               @default(0)
-  stockMinimo         Int               @default(5)
-  estado              EstadoGeneral     @default(ACTIVO)
+  stock       Int           @default(0)
+  stockMinimo Int           @default(5)
+  estado      EstadoGeneral @default(ACTIVO)
 
-  detallesVenta       detalleVenta[]
-  detallesCompra      detalleCompra[]
-  movimientos         movimientoInventario[]
+  detallesVenta     detalleVenta[]
+  detallesCompra    detalleCompra[]
+  movimientos       movimientoInventario[]
+  eventosMateriales EventoMaterial[]
+  gastosEventos     EventoGasto[]
 }
 
 model Proveedor {
@@ -146,7 +179,7 @@ model Cliente {
   correo    String?
   estado    EstadoGeneral @default(ACTIVO)
 
-  ventas    Venta[]
+  ventas Venta[]
 }
 
 model tipoPago {
@@ -169,19 +202,19 @@ model sesionCaja {
 }
 
 model Venta {
-  id              Int         @id @default(autoincrement())
+  id              Int            @id @default(autoincrement())
   idCliente       Int
-  cliente         Cliente     @relation(fields: [idCliente], references: [id])
+  cliente         Cliente        @relation(fields: [idCliente], references: [id])
   idUsuario       Int
-  usuario         Usuario     @relation(fields: [idUsuario], references: [id])
+  usuario         Usuario        @relation(fields: [idUsuario], references: [id])
   idSesionCaja    Int
-  sesionCaja      sesionCaja  @relation(fields: [idSesionCaja], references: [id])
+  sesionCaja      sesionCaja     @relation(fields: [idSesionCaja], references: [id])
   idTipoPago      Int
-  tipoPago        tipoPago    @relation(fields: [idTipoPago], references: [id])
-  fecha           DateTime    @default(now())
-  estado          EstadoVenta @default(COMPLETADA)
-  subtotal        Decimal     @default(0) @db.Decimal(10, 2)
-  total           Decimal     @default(0) @db.Decimal(10, 2)
+  tipoPago        tipoPago       @relation(fields: [idTipoPago], references: [id])
+  fecha           DateTime       @default(now())
+  estado          EstadoVenta    @default(COMPLETADA)
+  subtotal        Decimal        @default(0) @db.Decimal(10, 2)
+  total           Decimal        @default(0) @db.Decimal(10, 2)
   motivoAnulacion String?
   detalles        detalleVenta[]
 }
@@ -198,18 +231,18 @@ model detalleVenta {
 }
 
 model Compra {
-  id              Int           @id @default(autoincrement())
+  id              Int                    @id @default(autoincrement())
   idUsuario       Int
-  usuario         Usuario       @relation(fields: [idUsuario], references: [id])
+  usuario         Usuario                @relation(fields: [idUsuario], references: [id])
   idProveedor     Int
-  proveedor       Proveedor     @relation(fields: [idProveedor], references: [id])
-  fecha           DateTime      @default(now())
+  proveedor       Proveedor              @relation(fields: [idProveedor], references: [id])
+  fecha           DateTime               @default(now())
   numeroDocumento String?
   tipoDocumento   String?
-  subtotal        Decimal       @default(0) @db.Decimal(10, 2)
-  descuento       Decimal       @default(0) @db.Decimal(10, 2)
-  total           Decimal       @default(0) @db.Decimal(10, 2)
-  estado          EstadoGeneral @default(ACTIVO)
+  subtotal        Decimal                @default(0) @db.Decimal(10, 2)
+  descuento       Decimal                @default(0) @db.Decimal(10, 2)
+  total           Decimal                @default(0) @db.Decimal(10, 2)
+  estado          EstadoGeneral          @default(ACTIVO)
   detalles        detalleCompra[]
   movimientos     movimientoInventario[]
 }
@@ -225,22 +258,122 @@ model detalleCompra {
   subtotal     Decimal  @default(0) @db.Decimal(10, 2)
 }
 
-model movimientoInventario {
-  id          Int              @id @default(autoincrement())
-  idProducto  Int
-  producto    Producto         @relation(fields: [idProducto], references: [id])
-  idUsuario   Int
-  usuario     Usuario          @relation(fields: [idUsuario], references: [id])
-  idCompra    Int?
-  compra      Compra?          @relation(fields: [idCompra], references: [id])
-  fecha       DateTime         @default(now())
-  tipo        TipoMovimiento
-  origen      OrigenMovimiento @default(AJUSTE_MANUAL)
-  cantidad    Int
-  descripcion String
-  fotoUrl     String?
-  observacionFoto String?
+model Evento {
+  id          Int          @id @default(autoincrement())
+  nombre      String
+  descripcion String?
+  lugar       String?
+  fechaInicio DateTime
+  fechaFin    DateTime?
+  estado      EstadoEvento @default(PROXIMO)
+
+  idResponsable Int?
+  responsable   Usuario? @relation("EventoResponsable", fields: [idResponsable], references: [id], onDelete: SetNull)
+
+  idCreadoPor Int
+  creadoPor   Usuario @relation("EventoCreadoPor", fields: [idCreadoPor], references: [id], onDelete: Restrict)
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  materiales  EventoMaterial[]
+  movimientos movimientoInventario[]
+  gastos      EventoGasto[]
+
+  @@index([estado])
+  @@index([fechaInicio])
+  @@index([idResponsable])
+  @@index([idCreadoPor])
 }
+
+model EventoMaterial {
+  id         Int      @id @default(autoincrement())
+  idEvento   Int
+  evento     Evento   @relation(fields: [idEvento], references: [id], onDelete: Cascade)
+  idProducto Int
+  producto   Producto @relation(fields: [idProducto], references: [id], onDelete: Restrict)
+
+  tipoUso            TipoUsoEvento @default(CONSUMIBLE)
+  cantidadAsignada   Int
+  cantidadEntregada  Int           @default(0)
+  cantidadConsumida  Int           @default(0)
+  cantidadDevuelta   Int           @default(0)
+  cantidadDanada     Int           @default(0)
+  cantidadExtraviada Int           @default(0)
+  observacion        String?
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  @@unique([idEvento, idProducto])
+  @@index([idProducto])
+}
+
+model EventoGasto {
+  id       Int    @id @default(autoincrement())
+  idEvento Int
+  evento   Evento @relation(fields: [idEvento], references: [id], onDelete: Cascade)
+
+  grupo         String
+  gestionCompra String
+  proveedor     String
+  item          String
+
+  cantidadCompra   Decimal @db.Decimal(12, 2)
+  unidadCompra     String
+  factorConversion Decimal @default(1) @db.Decimal(12, 2)
+  cantidadControl  Decimal @db.Decimal(12, 2)
+  unidadControl    String
+
+  costoUnitario Decimal @db.Decimal(12, 2)
+  totalGastado  Decimal @db.Decimal(12, 2)
+
+  cantidadLlevada    Decimal @default(0) @db.Decimal(12, 2)
+  cantidadUtilizada  Decimal @default(0) @db.Decimal(12, 2)
+  cantidadDevuelta   Decimal @default(0) @db.Decimal(12, 2)
+  cantidadDanada     Decimal @default(0) @db.Decimal(12, 2)
+  cantidadExtraviada Decimal @default(0) @db.Decimal(12, 2)
+
+  tipoControl     TipoControlGasto
+  controlaStock   Boolean           @default(false)
+  estado          EstadoGastoEvento @default(REGISTRADO)
+  fechaGasto      DateTime          @default(now())
+  numeroDocumento String?
+  observacion     String?
+
+  idProducto Int?
+  producto   Producto? @relation(fields: [idProducto], references: [id], onDelete: SetNull)
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  @@index([idEvento])
+  @@index([idEvento, item])
+  @@index([grupo])
+  @@index([idProducto])
+}
+
+model movimientoInventario {
+  id              Int              @id @default(autoincrement())
+  idProducto      Int
+  producto        Producto         @relation(fields: [idProducto], references: [id])
+  idUsuario       Int
+  usuario         Usuario          @relation(fields: [idUsuario], references: [id])
+  idCompra        Int?
+  compra          Compra?          @relation(fields: [idCompra], references: [id])
+  idEvento        Int?
+  evento          Evento?          @relation(fields: [idEvento], references: [id], onDelete: SetNull)
+  fecha           DateTime         @default(now())
+  tipo            TipoMovimiento
+  origen          OrigenMovimiento @default(AJUSTE_MANUAL)
+  cantidad        Int
+  descripcion     String
+  fotoUrl         String?
+  observacionFoto String?
+
+  @@index([idEvento])
+}
+
 model solicitudUsuario {
   id             Int                    @id @default(autoincrement())
   nombre         String

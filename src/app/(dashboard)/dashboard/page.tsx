@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { ElementType } from "react"
+import Link from "next/link"
 import { toast } from "sonner"
 import {
   AlertTriangle,
@@ -9,6 +10,7 @@ import {
   ArrowUpFromLine,
   BarChart3,
   Boxes,
+  CalendarDays,
   ClipboardList,
   Package,
   RefreshCw,
@@ -223,7 +225,15 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/eventos"
+              className="inline-flex h-10 items-center gap-2 rounded-md bg-red-600 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-red-700"
+            >
+              <CalendarDays className="h-4 w-4" />
+              Eventos
+            </Link>
+
             <Select value={periodo} onValueChange={setPeriodo}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Periodo" />

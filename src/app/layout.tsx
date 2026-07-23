@@ -4,8 +4,8 @@ import { Providers } from "@/components/providers"
 import { Toaster } from "@/components/ui/sonner"
 
 export const metadata: Metadata = {
-  title: "CambaClothes — Sistema POS",
-  description: "Sistema de gestión para boutique de ropa",
+  title: "Inventario — MKT",
+  description: "Sistema de gestión de inventario para MKT",
 }
 
 export default function RootLayout({
